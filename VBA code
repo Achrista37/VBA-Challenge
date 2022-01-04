@@ -1,0 +1,142 @@
+# VBA-Challenge
+
+Sub SummaryTableTicker()
+
+    'Recorded Macro to Apply Advance Filter (Unique Records Only) and Paste into a Range
+    Application.CutCopyMode = False
+    Columns("A:A").AdvancedFilter Action:=xlFilterCopy, CopyToRange:=Range("I1" _
+    ), Unique:=True
+
+End Sub
+
+
+Sub Summary_header()
+    'Set title row
+    Range("I1").Value = "Ticker"
+    Range("J1").Value = "Yearly Change"
+    Range("K1").Value = "Percent Change"
+    Range("L1").Value = "Total Stock Volume"
+    Range("O1").Value = "Ticker"
+    Range("P1").Value = "Value"
+
+    Range("N2").Value = "%Greatest Increase"
+    Range("N3").Value = "%Greatest Decrease"
+    Range("N4").Value = "Greatest Volume"
+End Sub
+
+
+
+
+
+Sub TotalStockVolPortion()
+
+ Dim ws As Worksheet
+
+ 
+
+ For Each ws In Worksheets
+
+  ws.Activate
+
+
+    Dim rng As Long
+    Dim dataTableIndex, summaryTableIndex As Long
+    Dim priceOpen, priceClose, volumeTotal As Double
+    Dim greatestPercentInc, greatestPercentDec, greatestVol As Double
+    Dim TickerName, GPITicker, GPDTicker, GVTicker As String
+
+    Call SummaryTableTicker
+    Call Summary_header
+
+    'Get the number of rows to loop over
+    RowCountAllData = Cells(Rows.Count, "A").End(xlUp).Row
+
+    priceOpen = 0
+    priceClose = 0
+    volumeTotal = 0
+
+    greatestPercentInc = 0
+    greatestPercentDec = 0
+    greatestVol = 0
+
+    'Match the Ticker symbol in data sheet with the one in summary table
+    summaryTableIndex = 2
+    For dataTableIndex = 2 To RowCountAllData
+
+        'Memo opening and closing price
+        priceClose = Range("F" & dataTableIndex).Value
+        priceOpen = IIf(priceOpen = 0, Range("C" & dataTableIndex).Value, priceOpen)
+
+        'Accumulate volume
+        volumeTotal = volumeTotal + Range("G" & dataTableIndex).Value
+        
+        If dataTableIndex = RowCountAllData Or Range("A" & dataTableIndex).Value <> Range("A" & dataTableIndex + 1).Value Then
+            'Calculate summary values
+            TickerName = Range("A" & dataTableIndex)
+            summaryVolumeTotal = volumeTotal
+            summaryPriceChange = priceClose - priceOpen
+                If priceOpen = 0 Then
+                priceOpen = 1
+                SummaryPriceChangePercentage = summaryPriceChange / priceOpen
+                
+                Else
+                SummaryPriceChangePercentage = summaryPriceChange / priceOpen
+                End If
+            Select Case summaryPriceChange
+                Case Is > 0
+                    summaryPriceChangeColorIndex = 4
+                Case Is < 0
+                    summaryPriceChangeColorIndex = 3
+                Case Else
+                    summaryPriceChangeColorIndex = 0
+            End Select
+
+            'Memo Greatest Values
+            If SummaryPriceChangePercentage > greatestPercentInc Then
+                greatestPercentInc = SummaryPriceChangePercentage
+                GPITicker = TickerName
+            End If
+            If SummaryPriceChangePercentage < greatestPercentDec Then
+                greatestPercentDec = SummaryPriceChangePercentage
+                GPDTicker = TickerName
+            End If
+            If summaryVolumeTotal > greatestVol Then
+                greatestVol = summaryVolumeTotal
+                GVTicker = TickerName
+            End If
+
+            'Format and Print summary
+            Range("L" & summaryTableIndex).Value = summaryVolumeTotal
+            Range("J" & summaryTableIndex).Value = Round(summaryPriceChange, 2)
+            Range("K" & summaryTableIndex).Value = "%" & (SummaryPriceChangePercentage * 100)
+            Range("J" & summaryTableIndex).Interior.ColorIndex = summaryPriceChangeColorIndex
+
+            'Reset current ticker values
+            volumeTotal = 0
+            priceOpen = 0
+            priceClose = 0
+
+            'Next ticker summary
+            summaryTableIndex = summaryTableIndex + 1
+        End If
+
+    Next dataTableIndex
+
+    'Print Greatest Values
+    Range("P2").Value = "%" & (greatestPercentInc * 100)
+    Range("P3").Value = "%" & (greatestPercentDec * 100)
+    Range("P4").Value = greatestVol
+    Range("O2").Value = GPITicker
+    Range("O3").Value = GPDTicker
+    Range("O4").Value = GVTicker
+    
+    ws.Cells.EntireColumn.AutoFit
+
+
+Next ws
+
+
+End Sub
+
+
+
